@@ -180,11 +180,11 @@
     "ROWS_COUNTS": [null, null, null],
     "MODEL_TYPE": "bert",
     "DATASET_TYPE": "a",
-    "PATH_TRAIN": "./datasets/train_s.csv",
+    "PATH_TRAIN": "/content/genderBERT/a_train.csv",
     "COLUMNS_TRAIN": ["Gender", "ReviewText"],
     "PATH_VALIDATION": null,
     "COLUMNS_VALIDATION": null,
-    "PATH_TEST": "./datasets/test_s.csv",
+    "PATH_TEST": "/content/genderBERT/a_test.csv",
     "COLUMNS_TEST": ["Gender", "ReviewText"],
     "BASE_FREEZE": false
   }
