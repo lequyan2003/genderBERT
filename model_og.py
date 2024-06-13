@@ -34,11 +34,11 @@ def load_embeddings(
     # Load tokenized data
     logging.info("Tokenize train/validation data ...")
     embeddings = [None, None, None]
+    embeddings = [None, None, None]
     paths = [path_train, path_validation, path_test]
     columns = [columns_train, columns_validation, columns_test]
     phases = ["train", "val", "test"]
     embedding_paths = [None, None, None]
-    
     # Create paths for saving embeddings (if saving is selected)
     if save_embeddings:
         for i in range(3):
@@ -50,9 +50,9 @@ def load_embeddings(
                 truncating_method,
                 phases[i],
             )
-    
     for i in range(3):
-        # Toggle Phases: Decide whether to load data for train(0)/val(1)/test(2)
+        # Toggle Phases: Decide whether to load data
+        # for train(0)/val(1)/test(2)
         if toggle_phases[i]:
             # Load embedding if given
             if load_embeddings[i] is not None:
@@ -61,8 +61,9 @@ def load_embeddings(
             # Create exactly row counts many embedded instances
             elif rows_counts[i] is not None:
                 embeddings[i] = prepare_data(
-                    file_data=paths[i],
-                    return_data=True,
+                    paths[i],
+                    columns[i],
+                    True,
                     num_rows=rows_counts[i],
                     max_tokencount=max_tokencount,
                     truncating_method=truncating_method,
@@ -73,15 +74,14 @@ def load_embeddings(
             # Embed the whole file
             else:
                 embeddings[i] = prepare_data(
-                    file_data=paths[i],
-                    return_data=True,
+                    paths[i],
+                    columns[i],
+                    True,
                     max_tokencount=max_tokencount,
-                    truncating_method=truncating_method,
                     embedding_type=model_type,
                     dataset_type=dataset_type,
                     file_results=embedding_paths[i],
                 )
-
     train_data, val_data, test_data = embeddings
     return train_data, val_data, test_data
 
@@ -173,19 +173,16 @@ def create_dataloader(data, batch_size):
     inputs = data["input_ids"]
     labels = data["target"]
     mask = data["attention_mask"]
-    
     if "user_id" in data:
         user_ids = data["user_id"]
         data = TensorDataset(inputs, labels, mask, user_ids)
     else:
         data = TensorDataset(inputs, labels, mask)
-    
-    # Create DataLoader for faster training
+    # Create TensorDataset/Dataloader for faster training
     logging.info("Create DataLoader ...")
     sampler = RandomSampler(data)
     dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
     return dataloader
-
 
 
 def train_epoch(model, data_loader, optimizer, device, scheduler):
@@ -250,6 +247,7 @@ def eval_model(model, data_loader, device, model_type):
 
 def test_model(model, data_loader, device, model_type):
     # Test given model
+    # TODO: Add loss
     logging.info("-" * 30)
     logging.info("Start testing ...")
     model.eval()
@@ -260,16 +258,11 @@ def test_model(model, data_loader, device, model_type):
         b_input_ids = batch[0].to(device)
         b_labels = batch[1].to(device)
         b_input_mask = batch[2].to(device)
-        
-        # Check if user_ids are present in the batch
-        if len(batch) > 3:
-            b_user_ids = batch[3].to(device)
-        else:
-            b_user_ids = None
-        
+        b_user_ids = batch[3].to(device)
         with torch.no_grad():
             outputs = model(
                 b_input_ids,
+                # token_type_ids=None,
                 attention_mask=b_input_mask,
                 labels=None,
             )
@@ -280,20 +273,12 @@ def test_model(model, data_loader, device, model_type):
             tmp_eval_acc += (predicted == label_ids).sum().item()
             steps += b_labels.size(0)
             # Add to dataframe lists
-            if b_user_ids is not None:
-                user_id_list += b_user_ids.tolist()
+            user_id_list += b_user_ids.tolist()
             label_list += b_labels.tolist()
             pred_list += predicted.tolist()
-    
-    if user_id_list:
-      df = pd.DataFrame({"userid": user_id_list, "label": label_list, "prediction": pred_list})
-    else:
-      df = pd.DataFrame({"label": label_list, "prediction": pred_list})
-
-    # Create an alias column 'Gender' if 'label' represents gender
-    df['Gender'] = df['label']
-
-    
+    df = pd.DataFrame(
+        {"userid": user_id_list, "label": label_list, "prediction": pred_list}
+    )
     non_mv_accuracy = tmp_eval_acc / steps
     logging.info("Accuracy (Non-MV): {:.4}".format(non_mv_accuracy))
     f1_male = mv_stats_f1(df, 1, pred_label="prediction")

@@ -168,11 +168,11 @@
     "BASE_FREEZE": false
   },
   "9": {
-    "EPOCHS": 4,
+    "EPOCHS": 1,
     "LEARNING_RATE": 0.01,
     "BATCH_SIZE": 16,
     "MAX_TOKENCOUNT": 64,
-    "TRUNCATING_METHOD": "headtail",
+    "TRUNCATING_METHOD": "only_first",
     "TOGGLE_PHASES": [true, false, true],
     "SAVE_MODEL": "a_res",
     "PRELOAD_MODEL": null,
